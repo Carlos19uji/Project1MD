@@ -24,10 +24,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.project1mobiledevices.ui.theme.Project1MobileDevicesTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.internal.enableLiveLiterals
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 
 sealed class Screen(val route: String){
@@ -38,28 +41,6 @@ sealed class Screen(val route: String){
     object Club_history : Screen("club_history")
     object Favourites : Screen("favourites")
 
-}
-
-@Composable
-fun Navigation(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Screen.PlayerList.route) {
-        composable(Screen.PlayerList.route) {
-            PlayerList(navController)
-        }
-        composable(Screen.PlayerDetails.route) { backStackEntry ->
-            val playerName = backStackEntry.arguments?.getString("playerName")
-            val playerAge = backStackEntry.arguments?.getString("playerAge")
-            val playerPosition = backStackEntry.arguments?.getString("playerPosition")
-            val playerImage = backStackEntry.arguments?.getString("playerImage")?.toIntOrNull()
-
-            PlayerDetails(
-                name = playerName.orEmpty(),
-                age = playerAge.orEmpty(),
-                position = playerPosition.orEmpty(),
-                imageResId = playerImage ?: R.drawable.ic_launcher_background // Placeholder por si falta imagen
-            )
-        }
-    }
 }
 
 data class Player(val name: String, val icon: Int, val age: Int, val position: String)
@@ -80,12 +61,64 @@ class MainActivity : ComponentActivity() {
         setContent {
             Project1MobileDevicesTheme {
                 val navController = rememberNavController()
-                    PlayerList(navController = navController)
+                MainApp()
             }
         }
     }
 }
+@Composable
+fun MainApp() {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentScreen = navBackStackEntry?.destination?.route
 
+    Scaffold(
+        topBar = {
+            // No mostrar la barra superior si estamos en la pantalla principal (PlayerList)
+            if (currentScreen != Screen.PlayerList.route) {
+                val screenTitle = when {
+                    currentScreen?.startsWith(Screen.PlayerDetails.route.substringBefore("/{")) == true -> "Player Details"
+                    currentScreen == Screen.Favourites.route -> "Favourites"
+                    currentScreen == Screen.Club_history.route -> "Club History"
+                    else -> " "
+                }
+
+                TopNavigationBar(
+                    title = screenTitle,
+                    onBackClick = {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
+                )
+            }
+        }
+    ) { innerPadding ->
+        // Contenido principal con el NavHost
+        NavHost(
+            navController = navController,
+            startDestination = Screen.PlayerList.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.PlayerList.route) {
+                PlayerList(navController)
+            }
+            composable(Screen.PlayerDetails.route) { backStackEntry ->
+                val playerName = backStackEntry.arguments?.getString("playerName")
+                val playerAge = backStackEntry.arguments?.getString("playerAge")
+                val playerPosition = backStackEntry.arguments?.getString("playerPosition")
+                val playerImage = backStackEntry.arguments?.getString("playerImage")?.toIntOrNull()
+
+                PlayerDetails(
+                    name = playerName.orEmpty(),
+                    age = playerAge.orEmpty(),
+                    position = playerPosition.orEmpty(),
+                    imageResId = playerImage ?: R.drawable.ic_launcher_background
+                )
+            }
+        }
+    }
+}
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
@@ -104,6 +137,14 @@ fun PlayerList(navController: NavController) {
             .background(color = Color.Yellow)
             .padding(16.dp)
     ) {
+        Text(
+            text =  "Team Players",
+            color = Color.Blue,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(players) { player ->
                 Spacer(modifier = Modifier.height(16.dp))
